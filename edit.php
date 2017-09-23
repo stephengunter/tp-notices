@@ -1,14 +1,42 @@
 <?php
-    require_once("./service/edit.php");
-  
-	$id=0;
-	if (isset($_GET['id'])) {
-		$id=(int)$_GET['id'];
-	}
+   require_once("service.php");
+   
+   $service=new NoticeService();
+   
+   if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+	   // 使用者權限驗證
+	   
+	   
+	   $user_id = '51';  //當前使用者Id
+	   $user_unit = '102000';  //當前使用者部門
+	   
+	   $service->store($user_id , $user_unit);
+	   
+	  
+	   
+       /* 回到列表index */
+	    header("Location: http://localhost/tp-notice/index.php");
+		exit;
+   }
+   else
+   {
+		$id=0;
+		if (isset($_GET['id'])) {
+			$id=(int)$_GET['id'];
+		}
+		
+		$data=$service->edit($id);
 
-    $notice=getNotice($id);
+		$notice=$data[0];
+		$attachment=$data[1];
+		
 	
-	$attachment=getAttachment($id)
+		
+		
+   }
+
+
+    
   
 ?>
 
@@ -22,9 +50,9 @@
 
     <h1>發送校務系統通知</h1>
     
+<form enctype="multipart/form-data" id="form-notice" method="POST" action="">
 
-<form enctype="multipart/form-data" id="form-notice" method="POST" action="insert.php">
-        <div class="row">
+   <div class="row">
             <div class="col-md-12">
                 <label>通知內容</label>
                 <textarea name="Content" class="form-control" rows="6" cols="50" ><?php echo $notice['Content']; ?></textarea>   
@@ -33,17 +61,26 @@
             </div>
 
         </div>
-        <div class="row">
+		<div class="row">
             <div class="col-md-4 mb-3">
                 <label>附加檔案</label>
                 <input id="attachment-file" name="Attachment" type="file">
+				
+				
+                <div id="div-exist-attachment" class="form-inline" style="display: none;">
+                    <input id="attachment-file_name" class="form-control" value="<?php echo $attachment['Name']; ?>" type="text" disabled> 
+                    <button id="btn-del-attachment" class="btn btn-danger btn-sm">
+                        <span class="glyphicon glyphicon-trash"></span>
+                    </button>
+                </div>
             </div>
             <div class="col-md-8 mb-3">
                 <label>檔案顯示名稱</label>
-                <input type="text" name="Attachment_Title" class="form-control">
+                <input type="text" name="Attachment_Title" class="form-control" value="<?php echo $attachment['Title']; ?>" >
                 <small id="err-filename" class="text-danger" style="display: none;">請輸入檔案顯示名稱</small>
             </div>
         </div>
+        
         <div class="row" style="padding-top:10px">
 
             <div class="col-md-4">
@@ -110,20 +147,32 @@
                     <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
                     存檔
                 </button>
+				
+				
+            </div>
+
+        </div>
+	    <div class="row" >
+            <div class="col-md-12">
+				Id:<input type="text" name="ID" value="<?php echo $notice['Id']; ?>"  />
+				Reviewed:<input type="text" name="Reviewed" value="<?php echo $notice['Reviewed']; ?>" />
+				Levels:<input type="text" name="Levels" value="<?php echo $notice['Levels']; ?>" />
+				Attachment_ID:<input type="text" name="Attachment_ID" value="<?php echo $attachment['Id']; ?>"  />
             </div>
 
         </div>
 
-
-
-        <input type="text" name="Levels" value="<?php echo $notice['Levels']; ?>" />
-
+       
 
     </form>
+    <div class="row">
+        <div class="col-md-12">
+            select-type:<input id="select-type" type="text" value="" />
+            confirm-action:<input id="confirm-action" type="text" value="" />
+        </div>
 
-    <input id="select-type" type="hidden" value="" />
-
-
+    </div>
+   
 
 
 
@@ -136,7 +185,7 @@
                     <button id="close-custom-modal" type="button" class="close" data-dismiss="modal">&times;</button>
                     <h4 class="modal-title" id="custom-modal-title"></h4>
                 </div>
-                <div class="modal-body" id="custom-modal-content">
+                <div class="modal-body tree-modal" id="custom-modal-content">
                     <div class="row" style="padding-bottom:10px">
                         <div class="col-md-6">
                             <div class="form-inline">
@@ -178,10 +227,10 @@
 
     <button id="btn-alert-modal" type="button" data-toggle="modal" data-target="#alert-modal">ALERT</button>
     <div class="modal fade" id="alert-modal" role="dialog">
-        <div class="modal-dialog">
+        <div class="modal-dialog"  role="document">
             <div class="modal-content">
                 <div class="modal-header modal-header-danger">
-                    <button id="close-button" type="button" class="close" data-dismiss="modal">
+                    <button id="close-alert" type="button" class="close" data-dismiss="modal">
                         <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
                     </button>
                     <h3><span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span> </h3>
@@ -249,9 +298,10 @@
 
         //隱藏err-msg
         $("input[name='Units']").next().hide();
-        $('#unit-list').fadeIn();
+        //$('#unit-list').show();
 
     }
+    
     function setSelectedClasses(codes, names) {
 
         var textCode = '';
@@ -276,7 +326,7 @@
 
         //隱藏err-msg
         $("input[name='Classes']").next().hide();
-        $('#class-list').fadeIn();
+        $('#class-list').show();
 
     }
     function getSelectedUnits() {
@@ -389,23 +439,57 @@
 
         //});
     }
+    function staffChecked() {
+       
+       
+        return isTrue($("input[type='checkbox'][name='Staff']").val());
+    }
+
+    function teacherChecked() {
+        return isTrue($("input[type='checkbox'][name='Teacher']").val());
+    }
+
+    function studentChecked() {
+        return isTrue($("input[type='checkbox'][name='Student']").val());
+    }
 
     
 
-    function onStaffCheckChanged(checked, hideLevels) {
+    function onStaffCheckChanged(checked) {
+        
         if (checked) {
+            var hideLevels = false;
             beginSelectUnits(hideLevels);
+            $('#unit-list').show();
             $('#err-roles').hide();
         } else {
-            $('#unit-names').fadeOut();
+            if (!teacherChecked()) {
+                $('#unit-list').hide();
+            }
+            
         }
-    } 
+    }
+    function onTeacherCheckChanged(checked) {
+       
+        if (checked) {
+            var hideLevels = true;
+            beginSelectUnits(hideLevels);
+            $('#unit-list').show();
+            $('#err-roles').hide();
+        } else {
+            if (!staffChecked()) {
+                $('#unit-list').hide();
+            }
+        }
+    }
     function onStudentCheckChanged(checked) {
         if (checked) {
             beginSelectClasses();
+            $('#class-list').show();
             $('#err-roles').hide();
         } else {
-            $('#class-names').fadeOut();
+           
+            $('#class-list').hide();
         }
     } 
     function beginSelectUnits(hideLevels) {
@@ -505,8 +589,11 @@
       
 
     }
+    function getLevels() {
+       return $("input[name='Levels']").val();
+    }
     function setLevelsText() {
-        var levels = $("input[name='Levels']").val();
+        var levels = getLevels();
         var text = '';
         if (levels) {
             var lavel_ids = levels.split(',');
@@ -526,19 +613,19 @@
        
       
     }
-    function onLevelChanged(val, checked) {
-
-        var levels = $("input[name='Levels']").val();
-        if (checked) {
-            if (levels) levels += ',' ;
-            levels += val;
-        } else {
-            levels = levels.replace(val, ''); 
-            if (levels.startsWith(',')) levels = levels.slice(0, 1);
-            if (levels.endsWith(',')) levels = levels.slice(0, -1);
-        }
-        $("input[name='Levels']").val(levels);
-    }
+    //function onLevelChanged(val, checked) {
+    //    alert('onLevelChanged');
+    //    var levels = getLevels();
+    //    if (checked) {
+    //        if (levels) levels += ',' ;
+    //        levels += val;
+    //    } else {
+    //        levels = levels.replace(val, ''); 
+    //        if (levels.startsWith(',')) levels = levels.slice(0, 1);
+    //        if (levels.endsWith(',')) levels = levels.slice(0, -1);
+    //    }
+    //    $("input[name='Levels']").val(levels);
+    //}
 
    
     function CloseCustomModal() {
@@ -563,6 +650,9 @@
             $('#alert-footer').hide();
         }
         $('#btn-alert-modal').click();
+    }
+    function CloseAlert() {
+        $('#close-alert').click();
     }
    
 
@@ -600,10 +690,104 @@
         ShowAlert(html, showBtn)
     }
 
+    function getConfirmType() {
+        return $('#confirm-action').val();
+    }
+    function setConfirmType(value) {
+        $('#confirm-action').val(value);
+    }
+
+    function getAttachmentId() {
+        return  $("input[name='Attachment_ID']").val();
+       
+    }
+    function setAttachmentId(value) {
+        $("input[name='Attachment_ID']").val(value);
+    }
+
+    function onConfirmOK() {
+        CloseAlert();
+
+        var type = getConfirmType();
+        if (type == 'del-attachment') {
+            delAttachment();
+        }
+    }
+
+    function delAttachment() {
+        alert('delAttachment');
+
+        setAttachmentId('0');
+        $("input[name='Attachment_Title']").val('');
+
+        toggleFile();
+    }
+
+    function toggleFile(){
+        var attachmentId=getAttachmentId();
+        if(isTrue(attachmentId)){
+            $('#attachment-file').hide();
+            $('#div-exist-attachment').show();
+        }else{
+            $('#attachment-file').show();
+            $('#div-exist-attachment').hide();
+        }
+    }
+
+    function chkRoles() {
+        $('.chk-roles').each(function () {
+            $selected = isTrue($(this).val());
+            $(this).prop("checked", $selected);
+
+        });
+    }
+    function chkLevels() {
+        var levels = getLevels();
+        if (levels) {
+            var lavel_ids = levels.split(',');
+            $('.chk-levels').each(function () {
+                $selected = lavel_ids.includes($(this).val());               
+                $(this).prop("checked", $selected);
+
+            });
+
+            setLevelsText();
+        }
+        
+    }
+
+   
+    function iniEdit() {
+        toggleFile();
+
+        chkRoles();
+        chkLevels();
+
+        
+
+        var student = isTrue($("input[type='checkbox'][name='Student']").val());
+        var teacher = isTrue($("input[type='checkbox'][name='Teacher']").val());
+        var staff = isTrue($("input[type='checkbox'][name='Staff']").val());
+
+        if (teacher || staff) {
+            $('#unit-list').show();
+        }
+
+        if (student) {
+            $('#class-list').show();
+        }
+
+    }
+
+   
+
    
 
     
     $(document).ready(function () {
+
+        iniEdit();
+
         $("input[type='checkbox'][name='Staff']").change(function () {
             var checked = $(this).prop("checked");
             $(this).val(checked);
@@ -628,12 +812,8 @@
         //    onLevelChanged(val ,checked);
         //});
 
-        $('.chk-roles').each(function () {
-            $selected=isTrue($(this).val());
-            $(this).prop("checked", $selected);
-            
-        });
-       
+        
+        
 
 
         $('#btn-select-done').click(function () {
@@ -656,6 +836,41 @@
             e.preventDefault();
             beginSelectClasses();
         });
+
+        //$("#attachment-file").change(function () {
+        //    if (document.getElementById('attachment-file').files.length) {
+
+        //    } else {
+
+        //    }
+        //});
+
+        $('#btn-del-attachment').click(function (e) {
+            e.preventDefault();
+            var content = '<h3>確定要刪除此附加檔案嗎?</h3>';
+            var showBtn = true;
+            ShowAlert(content, showBtn);
+
+            setConfirmType('del-attachment');
+           
+        });
+
+        $('#btn-confirm-ok').click(function (e) {
+            e.preventDefault();
+            onConfirmOK();
+        });
+
+        $('#btn-confirm-cancel').click(function (e) {
+            e.preventDefault();
+            CloseAlert();
+        });
+
+
+        $('#form-notice').keydown(function () {
+            clearErrorMsg(event.target);
+        });
+
+
 
         $('#form-notice').submit(function (e) {
           
@@ -691,7 +906,7 @@
                  var  classes= $("input[name='Classes']").val();
                  if (!classes) {
                      canSubmit = false;
-                     $('#class-list').fadeIn();
+                     $('#class-list').show();
                      $("input[name='Classes']").next().show();
                      errMsgs.push($("input[name='Classes']").next().text());
                  }
@@ -702,7 +917,7 @@
                  var units = $("input[name='Units']").val();
                  if (!units) {
                      canSubmit = false;
-                     $('#unit-list').fadeIn();
+                     $('#unit-list').show();
                      $("input[name='Units']").next().show();
                      errMsgs.push($("input[name='Units']").next().text());
                  }
@@ -736,9 +951,7 @@
           
         });
 
-        $('#form-notice').keydown(function () {
-            clearErrorMsg(event.target);
-        });
+        
 
        
         

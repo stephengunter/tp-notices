@@ -1,32 +1,26 @@
 <?php
 
 
-function connectDB(){
-	$serverName = "127.0.0.1\SQLEXPRESS2014"; 
-	$connectionInfo = array( "Database"=>"school", "UID"=>"stephen", "PWD"=>"ss355");
-	$conn = sqlsrv_connect( $serverName, $connectionInfo);
-	return $conn;
-}
 
 function getNotice($id){
 	
-	$notice = [
-			'id' => 0 , 
-			'Content' => '',
-			'Staff' => 0,
-			'Teacher' => 0,
-			'Student' => 0,
-			
-			'Units' => '',
-			'Classes' => '',
-			'Levels' => '',
-			
-			'PS' => '',
+	if(!$id) return  [
+						'Id' => 0 , 
+						'Content' => '',
+						'Staff' => 0,
+						'Teacher' => 0,
+						'Student' => 0,
+						'Reviewed' => 0,
+						'Units' => '',
+						'Classes' => '',
+						'Levels' => '',
+						
+						'PS' => '',
 
-	];
+					];
 	
 	
-
+     echo "damn";
 	if($id)  {
 		
 		$serverName = "127.0.0.1\SQLEXPRESS2014"; 
@@ -37,8 +31,8 @@ function getNotice($id){
 		$params = array($id);
 		$stmt = sqlsrv_query( $conn, $tsql , $params);
 		
-	    $notice = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-		
+	    $record = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+		if($record) $notice=$record;
 		
 		sqlsrv_free_stmt( $stmt);
 		sqlsrv_close( $conn);
@@ -55,7 +49,7 @@ function getAttachment($id){
 	
 
 	$attachment=[
-			'id' => 0 , 		
+			'Id' => 0 , 		
 			'Notice_Id' => 0,
 			'Title' => '',
 			'Name' => '',

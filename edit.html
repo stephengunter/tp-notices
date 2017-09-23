@@ -116,7 +116,7 @@
         <div class="col-md-12 form-inline">
             id:<input type="text" name="ID" value="1" />
             attac_id:<input type="text" name="Attachment_ID" value="1" />
-            Levels:<input type="text" name="Levels" value="" />
+            Levels:<input type="text" name="Levels" value="1" />
             select-type:<input id="select-type" type="text" value="" />
             confirm-action:<input id="confirm-action" type="text" value="" />
         </div>
@@ -248,9 +248,10 @@
 
         //¡Ù¬√err-msg
         $("input[name='Units']").next().hide();
-        $('#unit-list').fadeIn();
+        //$('#unit-list').show();
 
     }
+    
     function setSelectedClasses(codes, names) {
 
         var textCode = '';
@@ -275,7 +276,7 @@
 
         //¡Ù¬√err-msg
         $("input[name='Classes']").next().hide();
-        $('#class-list').fadeIn();
+        $('#class-list').show();
 
     }
     function getSelectedUnits() {
@@ -388,23 +389,57 @@
 
         //});
     }
+    function staffChecked() {
+       
+       
+        return isTrue($("input[type='checkbox'][name='Staff']").val());
+    }
+
+    function teacherChecked() {
+        return isTrue($("input[type='checkbox'][name='Teacher']").val());
+    }
+
+    function studentChecked() {
+        return isTrue($("input[type='checkbox'][name='Student']").val());
+    }
 
     
 
-    function onStaffCheckChanged(checked, hideLevels) {
+    function onStaffCheckChanged(checked) {
+        
         if (checked) {
+            var hideLevels = false;
             beginSelectUnits(hideLevels);
+            $('#unit-list').show();
             $('#err-roles').hide();
         } else {
-            $('#unit-names').fadeOut();
+            if (!teacherChecked()) {
+                $('#unit-list').hide();
+            }
+            
         }
-    } 
+    }
+    function onTeacherCheckChanged(checked) {
+       
+        if (checked) {
+            var hideLevels = true;
+            beginSelectUnits(hideLevels);
+            $('#unit-list').show();
+            $('#err-roles').hide();
+        } else {
+            if (!staffChecked()) {
+                $('#unit-list').hide();
+            }
+        }
+    }
     function onStudentCheckChanged(checked) {
         if (checked) {
             beginSelectClasses();
+            $('#class-list').show();
             $('#err-roles').hide();
         } else {
-            $('#class-names').fadeOut();
+           
+            $('#class-list').hide();
         }
     } 
     function beginSelectUnits(hideLevels) {
@@ -504,8 +539,11 @@
       
 
     }
+    function getLevels() {
+       return $("input[name='Levels']").val();
+    }
     function setLevelsText() {
-        var levels = $("input[name='Levels']").val();
+        var levels = getLevels();
         var text = '';
         if (levels) {
             var lavel_ids = levels.split(',');
@@ -525,19 +563,19 @@
        
       
     }
-    function onLevelChanged(val, checked) {
-
-        var levels = $("input[name='Levels']").val();
-        if (checked) {
-            if (levels) levels += ',' ;
-            levels += val;
-        } else {
-            levels = levels.replace(val, ''); 
-            if (levels.startsWith(',')) levels = levels.slice(0, 1);
-            if (levels.endsWith(',')) levels = levels.slice(0, -1);
-        }
-        $("input[name='Levels']").val(levels);
-    }
+    //function onLevelChanged(val, checked) {
+    //    alert('onLevelChanged');
+    //    var levels = getLevels();
+    //    if (checked) {
+    //        if (levels) levels += ',' ;
+    //        levels += val;
+    //    } else {
+    //        levels = levels.replace(val, ''); 
+    //        if (levels.startsWith(',')) levels = levels.slice(0, 1);
+    //        if (levels.endsWith(',')) levels = levels.slice(0, -1);
+    //    }
+    //    $("input[name='Levels']").val(levels);
+    //}
 
    
     function CloseCustomModal() {
@@ -646,13 +684,49 @@
         }
     }
 
-   
-    function iniEdit() {
+    function chkRoles() {
         $('.chk-roles').each(function () {
             $selected = isTrue($(this).val());
             $(this).prop("checked", $selected);
 
         });
+    }
+    function chkLevels() {
+        var levels = getLevels();
+        if (levels) {
+            var lavel_ids = levels.split(',');
+            $('.chk-levels').each(function () {
+                $selected = lavel_ids.includes($(this).val());               
+                $(this).prop("checked", $selected);
+
+            });
+
+            setLevelsText();
+        }
+        
+    }
+
+   
+    function iniEdit() {
+        toggleFile();
+
+        chkRoles();
+        chkLevels();
+
+        
+
+        var student = isTrue($("input[type='checkbox'][name='Student']").val());
+        var teacher = isTrue($("input[type='checkbox'][name='Teacher']").val());
+        var staff = isTrue($("input[type='checkbox'][name='Staff']").val());
+
+        if (teacher || staff) {
+            $('#unit-list').show();
+        }
+
+        if (student) {
+            $('#class-list').show();
+        }
+
     }
 
    
@@ -782,7 +856,7 @@
                  var  classes= $("input[name='Classes']").val();
                  if (!classes) {
                      canSubmit = false;
-                     $('#class-list').fadeIn();
+                     $('#class-list').show();
                      $("input[name='Classes']").next().show();
                      errMsgs.push($("input[name='Classes']").next().text());
                  }
@@ -793,7 +867,7 @@
                  var units = $("input[name='Units']").val();
                  if (!units) {
                      canSubmit = false;
-                     $('#unit-list').fadeIn();
+                     $('#unit-list').show();
                      $("input[name='Units']").next().show();
                      errMsgs.push($("input[name='Units']").next().text());
                  }
