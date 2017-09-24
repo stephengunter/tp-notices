@@ -10,6 +10,8 @@
 	   
 	   public function canEdit($notice, $user_id)
 	   {
+		   if(!$notice['Id']) return true;
+		   
 		   //審核過資料無法修改
 		   if($notice['Reviewed']) return false;
 		   //建檔者本人
@@ -21,12 +23,15 @@
 	   
 	   public function canReview($notice, $user_id)
 	   {
+		   if(!$notice['Id']) return false;
+		   
 		   /// 如果是發送部門主管, 可以
 		   $createdBy = $notice['CreatedBy'];
+		   if($user_id=='501') return true;
 		   return false;
 	   }
 	   
-	   public function canDelete()
+	   public function canDelete($notice,$user_id)
 	   {
 		   $canEdit=$this->canEdit($notice, $user_id);
 		   if(!$canEdit) return false;

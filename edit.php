@@ -1,4 +1,9 @@
 <?php
+
+   $user_id = '501';  //取得當前使用者Id
+   $user_unit = '102000';  //取得當前使用者部門
+	   
+	   
    require_once("service.php");
    
    $service=new NoticeService();
@@ -7,10 +12,6 @@
 	   // 使用者權限驗證
 	   
 	   
-	   
-	   
-	   $user_id = '501';  //當前使用者Id
-	   $user_unit = '102000';  //當前使用者部門
 	   
 	   $id=0;
 	   if (isset($_POST['Id'])) {
@@ -60,7 +61,11 @@
 		$notice=$data[0];
 		$attachment=$data[1];
 		
-	
+		$canEdit=$service->canEdit($notice, $user_id);
+		$canReview=$service->canReview($notice, $user_id);
+		$canDelete=$service->canDelete($notice, $user_id);
+		
+		var_dump($canReview);
 		
 		
    }
@@ -171,7 +176,7 @@
             </div>
 
         </div>
-        <div class="row" style="padding-top:10px">
+        <div id="submit-buttons" class="row" style="padding-top:10px">
             <div class="col-md-6">
                 <button class="btn btn-success" type="submit">
                     <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
@@ -187,6 +192,7 @@
 				
             </div>
         </div>
+		
 	    <div class="row" >
             <div class="col-md-12">
 				Id:<input id="notice-id" type="text" name="Id" value="<?php echo $notice['Id']; ?>"  />
@@ -200,8 +206,40 @@
        
 
     </form>
+	
+	
+	<div id="div-review" class="row" style="padding-top:10px" >
+	        <div class="col-md-6">
+			
+			<?php if( isset($notice['ReviewedAt'])) : ?>
+			     <h3><span class="label label-success">已審核 ( <?php echo date_format($notice['ReviewedAt'], 'Y-m-d H:i:s'); ?> )</span></h3>
+			<?php else : ?>
+			   <form id="form-approve" method="POST" action="approve.php">
+			     <button id="btn-review-ok" class="btn btn-success" type="button">
+				   <span class="glyphicon glyphicon-ok" aria-hidden="true"></span>
+                    核准
+                </button>
+				
+				<input name="Id" value="<?php echo $notice['Id']; ?>">
+			   </form>	
+			<?php endif ?>
+			
+			
+            
+			   
+
+               
+            </div>
+	        
+    </div>
+	
+	
+	
     <div class="row">
         <div class="col-md-12">
+		    can-edit:<input id="can-edit" type="text" value="<?php echo $canEdit; ?>" />
+			can-review:<input id="can-review" type="text" value="<?php echo $canReview; ?>"  />
+			can-delete:<input id="can-delete" type="text" value="<?php echo $canDelete; ?>"  />
             select-type:<input id="select-type" type="text" value="" />
             confirm-action:<input id="confirm-action" type="text" value="" />
         </div>
@@ -378,6 +416,15 @@
 
             setConfirmType('delete-notice');
         });
+		
+		$('#btn-review-ok').click(function (e) {
+            e.preventDefault();
+            var content = '<h3>確定核准此通知嗎?</h3>';
+            var showBtn = true;
+            ShowAlert(content, showBtn);
+
+            setConfirmType('review-ok');
+        });
 
 
         $('#form-notice').keydown(function () {
@@ -445,7 +492,7 @@
                  return false;
              } 
 
-             alert('submit');
+             
 
              if (!student) {
                  $("input[name='Classes']").val('');

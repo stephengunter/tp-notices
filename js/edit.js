@@ -28,12 +28,30 @@
 	   
    }
    
+   function reviewOK(){
+	   $('#form-approve').submit();
+   }
+   
    function getNoticeId(){
 	   
 	   return $('#notice-id').val();
    }
+   
+   function canEdit(){
+	   var val=$('#can-edit').val();
+	   return isTrue(val);
+   }
+   function canReview(){
+	   var val=$('#can-review').val();
+	   return isTrue(val);
+   }
+   function canDelete(){
+	   var val=$('#can-delete').val();
+	   return isTrue(val);
+   }
  
    function isTrue(val){
+	   if(!val) return false;
         if(typeof val=='number'){
             return val > 0
         }else if(typeof val=='string'){
@@ -253,21 +271,9 @@
             });
         }
         
-        //treeview.on("CheckUncheckDone", function () {
-        //    var list = [];
-        //    treeview.hummingbird("getChecked", {
-        //        attr: "id",
-        //        list: list,
-        //        OnlyFinalInstance: true
-        //    });
-
-        //    alert(list.length);
-
-        //});
+        
     }
     function staffChecked() {
-       
-       
         return isTrue($("input[type='checkbox'][name='Staff']").val());
     }
 
@@ -439,20 +445,7 @@
        
       
     }
-    //function onLevelChanged(val, checked) {
-    //    alert('onLevelChanged');
-    //    var levels = getLevels();
-    //    if (checked) {
-    //        if (levels) levels += ',' ;
-    //        levels += val;
-    //    } else {
-    //        levels = levels.replace(val, ''); 
-    //        if (levels.startsWith(',')) levels = levels.slice(0, 1);
-    //        if (levels.endsWith(',')) levels = levels.slice(0, -1);
-    //    }
-    //    $("input[name='Levels']").val(levels);
-    //}
-
+    
    
     function CloseCustomModal() {
         $('#close-custom-modal').click();
@@ -540,6 +533,9 @@
         }else if(type == 'delete-notice'){
 			 deleteNotice();
 			
+		}else if(type == 'review-ok'){
+			 reviewOK();
+			
 		}
     }
 	
@@ -591,16 +587,29 @@
 
    
     function iniEdit() {
+		
+		if(!canEdit()){
+			$("#form-notice :input").attr("disabled", true);
+			$('#submit-buttons').hide();
+		}
+		
+		if(!canDelete()){
+			$("#btn-delete").hide();
+		}
+		
+		if(!canReview()){
+			
+			$("#form-approve").hide();
+		}
+		
         toggleFile();
 
         chkRoles();
         chkLevels();
 
-        
-
-        var student = isTrue($("input[type='checkbox'][name='Student']").val());
-        var teacher = isTrue($("input[type='checkbox'][name='Teacher']").val());
-        var staff = isTrue($("input[type='checkbox'][name='Staff']").val());
+        var student = studentChecked();
+        var teacher = teacherChecked();
+        var staff =staffChecked();
 
         if (teacher || staff) {
             $('#unit-list').show();
@@ -609,10 +618,10 @@
         if (student) {
             $('#class-list').show();
         }
-		
-		
 
         loadUnitNames();
 		loadClassNames();
+		
+		
 
     }
