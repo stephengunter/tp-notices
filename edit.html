@@ -301,6 +301,28 @@
 
         })
     }
+    function loadUnitNames() {
+        var url = 'http://school/api/units';
+        var codes = getSelectedUnits();
+        if (!codes) return;
+
+        var code_array = codes.split(',');
+        $.getJSON(url)
+        .done(function (data) {
+            var names = '';
+            for (var i = 0; i < data.length; i++) {
+                if (code_array.includes(data.code)) {
+                    name += data.name;
+                }
+            }
+            names = names.slice(0, -1);
+
+            $('#unit-names').val(names);
+
+        }).fail(function (error) {
+            OnError();
+        });
+    }
     function fetchClasses() {
         //var url = 'http://203.64.37.41:9000/api/classes';
         var url = 'http://school/api/classes';
@@ -726,6 +748,8 @@
         if (student) {
             $('#class-list').show();
         }
+
+        loadUnitNames();
 
     }
 

@@ -7,16 +7,46 @@
 	   // 使用者權限驗證
 	   
 	   
-	   $user_id = '51';  //當前使用者Id
+	   
+	   
+	   $user_id = '501';  //當前使用者Id
 	   $user_unit = '102000';  //當前使用者部門
 	   
-	   $service->store($user_id , $user_unit);
+	   $id=0;
+	   if (isset($_POST['Id'])) {
+			$id=(int)$_POST['Id'];
+	   }
 	   
+	   
+	   
+	   if($id){
+		   $notice=$service->getById($id);
+		   if(!$notice)  die('錯誤: 查無資料');
+		   
+		    // 使用者權限驗證
+		   $can_update= $service->canEdit($notice, $user_id);
+		   if(!$can_update)  die('錯誤: 權限不足');
+		   
+		   
+		   $service->update($id , $user_id , $user_unit);
+	   }else{
+		   $service->insert($user_id , $user_unit);
+	   }
+	   
+	   
+	   
+	   $errMsg = '';
+	   if($errMsg){
+		   die('錯誤: ' . $errMsg);
+		   
+	   }else{
+		   /* 回到列表index */
+			header("Location: http://localhost/tp-notice/index.php");
+			exit;
+	   }
 	  
 	   
-       /* 回到列表index */
-	    header("Location: http://localhost/tp-notice/index.php");
-		exit;
+       
    }
    else
    {
@@ -142,19 +172,24 @@
 
         </div>
         <div class="row" style="padding-top:10px">
-            <div class="col-md-12">
+            <div class="col-md-6">
                 <button class="btn btn-success" type="submit">
                     <span class="glyphicon glyphicon-floppy-disk" aria-hidden="true"></span>
                     存檔
                 </button>
 				
+            </div>
+	        <div class="col-md-6">
+                <button  id="btn-delete" class="btn btn-danger" type="button">
+                    <span class="glyphicon glyphicon-trash"></span>
+					刪除
+                </button>
 				
             </div>
-
         </div>
 	    <div class="row" >
             <div class="col-md-12">
-				Id:<input type="text" name="ID" value="<?php echo $notice['Id']; ?>"  />
+				Id:<input id="notice-id" type="text" name="Id" value="<?php echo $notice['Id']; ?>"  />
 				Reviewed:<input type="text" name="Reviewed" value="<?php echo $notice['Reviewed']; ?>" />
 				Levels:<input type="text" name="Levels" value="<?php echo $notice['Levels']; ?>" />
 				Attachment_ID:<input type="text" name="Attachment_ID" value="<?php echo $attachment['Id']; ?>"  />
@@ -255,565 +290,41 @@
 <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 
-
 <script src="./js/treeview.js"></script>
-
+<script src="./js/edit.js"></script>
 
 
 <script type="text/javascript">
-    function isTrue(val){
-        if(typeof val=='number'){
-            return val > 0
-        }else if(typeof val=='string'){
-            if(val.toLowerCase()=='true') return true
-            if(val=='1') return true
-            return false
-        }else if(typeof val=='boolean'){
-            return val
-        }
-      
-        return false
-    }
-    function setSelectedUnits(unitCodes, unitNames) {
-       
-        var textCode = '';
-        for (var i = 0; i < unitCodes.length; i++) {
-            textCode += unitCodes[i];
-            if (i < unitCodes.length - 1) textCode += ',';
-        }
-        $('#unit-codes').val(textCode);
-
-       
-       
-        var textName = '';
-        for (var i = 0; i < unitNames.length; i++) {
-            textName += unitNames[i];
-            if (i < unitNames.length - 1) textName += ',';
-        }
-
-
-        $('#unit-names').val(textName);
-
-        CloseCustomModal();
-
-        //隱藏err-msg
-        $("input[name='Units']").next().hide();
-        //$('#unit-list').show();
-
-    }
-    
-    function setSelectedClasses(codes, names) {
-
-        var textCode = '';
-        for (var i = 0; i < codes.length; i++) {
-            textCode += codes[i];
-            if (i < codes.length - 1) textCode += ',';
-        }
-        $('#class-codes').val(textCode);
-
-
-
-        var textName = '';
-        for (var i = 0; i < names.length; i++) {
-            textName += names[i];
-            if (i < names.length - 1) textName += ',';
-        }
-
-
-        $('#class-names').val(textName);
-
-        CloseCustomModal();
-
-        //隱藏err-msg
-        $("input[name='Classes']").next().hide();
-        $('#class-list').show();
-
-    }
-    function getSelectedUnits() {
-        return $('#unit-codes').val();
-    }
-    function getSelectedClasses() {
-        return $('#class-codes').val();
-    }
    
-    function fetchUnits() {
-
-        //var url = 'http://203.64.37.41:9000/api/units';
-        var url = 'http://school/api/units';
-        return new Promise((resolve, reject) => {
-            $.getJSON(url)
-             .done(function (data) {
-                 createNodeList(data);
-                 resolve(true)
-             }).fail(function (error) {
-                 reject(error);
-             });
-
-        })
-    }
-    function fetchClasses() {
-        //var url = 'http://203.64.37.41:9000/api/classes';
-        var url = 'http://school/api/classes';
-        return new Promise((resolve, reject) => {
-            $.getJSON(url)
-             .done(function (data) {
-                createNodeList(data);
-                resolve(true)
-             }).fail(function (error) {
-                 reject(error);
-             });
-
-        })
-    }
-    function createNodeList(data) {
-      
-        var html = '';
-
-        for (var i = 0; i < data.length ; i++) {
-            html += getNode(data[i]);
-        }
-
-        $("#treeview-members").html(html);
-    }
-    function getNode(unit) {
-        var html = '<li>';
-
-        if (unit.children && unit.children.length) {
-            html += ' <i class="fa fa-plus"></i>';
-            html += '<label>' + '<input data-name="' + unit.name + '"   data-id="' + unit.code + '"   type="checkbox" />'
-            html += unit.name + '</label>';
-        } else {
-            html += '<label>' + '<input data-name="' + unit.name + '"   data-id="' + unit.code + '" class="hummingbirdNoParent"  type="checkbox" />'
-            html += unit.name + '</label>';
-        }
-
-
-        if (unit.children && unit.children.length) {
-            html += ' <ul>';
-            for (var i = 0; i < unit.children.length ; i++) {
-                html += getNode(unit.children[i]);
-            }
-            html += ' </ul>';
-        }
-
-        return html;
-
-    }
-    function iniUnitsTree() {
-        var treeview = $("#treeview-members");
-        var type = getSelectType();
-    
-
-        var selected_codes = '';
-        if (type == 'unit') {
-            selected_codes = getSelectedUnits();
-        } else {
-           
-            selected_codes = getSelectedClasses();
-        }
-
-        
-      
-        treeview.hummingbird();
-
-        if (!selected_codes) return;
-
-        var selected_ids = selected_codes.split(',');
-        for (var i = 0; i < selected_ids.length; i++) {
-            treeview.hummingbird("checkNode", {
-                attr: "data-id",
-                name: selected_ids[i],
-                expandParents: false
-            });
-        }
-        
-        //treeview.on("CheckUncheckDone", function () {
-        //    var list = [];
-        //    treeview.hummingbird("getChecked", {
-        //        attr: "id",
-        //        list: list,
-        //        OnlyFinalInstance: true
-        //    });
-
-        //    alert(list.length);
-
-        //});
-    }
-    function staffChecked() {
-       
-       
-        return isTrue($("input[type='checkbox'][name='Staff']").val());
-    }
-
-    function teacherChecked() {
-        return isTrue($("input[type='checkbox'][name='Teacher']").val());
-    }
-
-    function studentChecked() {
-        return isTrue($("input[type='checkbox'][name='Student']").val());
-    }
-
-    
-
-    function onStaffCheckChanged(checked) {
-        
-        if (checked) {
-            var hideLevels = false;
-            beginSelectUnits(hideLevels);
-            $('#unit-list').show();
-            $('#err-roles').hide();
-        } else {
-            if (!teacherChecked()) {
-                $('#unit-list').hide();
-            }
-            
-        }
-    }
-    function onTeacherCheckChanged(checked) {
-       
-        if (checked) {
-            var hideLevels = true;
-            beginSelectUnits(hideLevels);
-            $('#unit-list').show();
-            $('#err-roles').hide();
-        } else {
-            if (!staffChecked()) {
-                $('#unit-list').hide();
-            }
-        }
-    }
-    function onStudentCheckChanged(checked) {
-        if (checked) {
-            beginSelectClasses();
-            $('#class-list').show();
-            $('#err-roles').hide();
-        } else {
-           
-            $('#class-list').hide();
-        }
-    } 
-    function beginSelectUnits(hideLevels) {
-        setSelectType('unit');
-      
-        var units = fetchUnits();
-
-        units.then(result => {
-            iniUnitsTree();
-            if (hideLevels) {
-                $('#div-level').hide();
-            } else {
-                $('#div-level').show();
-            }
-            
-            ShowCustomModal('請選擇發送對象部門');
-        })
-        .catch(error=> {
-            OnError();
-        })
-    }
-
-    function beginSelectClasses() {
-        setSelectType('class');
-
-        var classes = fetchClasses();
-
-        classes.then(result => {
-            iniUnitsTree();
-          
-            $('#div-level').hide();
-            ShowCustomModal('請選擇發送對象班級');
-        })
-        .catch(error=> {
-            OnError();
-        })
-    }
-
-    
-    function setSelectType(type) {
-        $('#select-type').val(type)
-    }
-    function getSelectType() {
-        return $('#select-type').val();
-    }
-    function onSelectDone() {
-       
-        var type = getSelectType();
-        var id_list = [];
-        $("#treeview-members").hummingbird("getChecked", {
-            attr: "data-id",
-            list: id_list,
-            OnlyFinalInstance: true
-        });
-
-        if (!id_list.length) {
-            if (type == 'unit') alert('請選擇部門');
-            else alert('請選擇班級');
-
-            return false;
-        }
-
-        var name_list = [];
-        $("#treeview-members").hummingbird("getChecked", {
-            attr: "data-name",
-            list: name_list,
-            OnlyFinalInstance: true
-        });
-
-        
-
-        if (type == 'unit') {
-            setSelectedUnits(id_list, name_list);
-            
-            setLevels();
-        } else {
-            setSelectedClasses(id_list, name_list);
-        }
-       
-
-    }
-
-    function setLevels()
-    {
-        var ids = '';
-        if ($('#level-one').prop("checked")) ids = '1';
-
-        if ($('#level-two').prop("checked")) {
-            if (ids) ids += ',';
-
-            ids += '2';
-        }
-
-        $("input[name='Levels']").val(ids);
-
-        setLevelsText();
-      
-
-    }
-    function getLevels() {
-       return $("input[name='Levels']").val();
-    }
-    function setLevelsText() {
-        var levels = getLevels();
-        var text = '';
-        if (levels) {
-            var lavel_ids = levels.split(',');
-            if (lavel_ids.indexOf('1') > -1) text += '一級主管';
-
-            if (lavel_ids.indexOf('2') > -1) {
-                if (text) text += ',';
-                text += '二級主管';
-            }
-
-        }
-
-        if (text) text = ' ( ' + text + ' )';
-
-        $('#level-text').text(text);
-
-       
-      
-    }
-    //function onLevelChanged(val, checked) {
-    //    alert('onLevelChanged');
-    //    var levels = getLevels();
-    //    if (checked) {
-    //        if (levels) levels += ',' ;
-    //        levels += val;
-    //    } else {
-    //        levels = levels.replace(val, ''); 
-    //        if (levels.startsWith(',')) levels = levels.slice(0, 1);
-    //        if (levels.endsWith(',')) levels = levels.slice(0, -1);
-    //    }
-    //    $("input[name='Levels']").val(levels);
-    //}
-
-   
-    function CloseCustomModal() {
-        $('#close-custom-modal').click();
-    }
-
-    function ShowCustomModal(title) {
-        SetCustomModalTitle(title)
-        $('#open-custom-modal').click();
-    }
-
-    function SetCustomModalTitle(title) {
-        $('#custom-modal-title').text(title);
-    }
-
-    function ShowAlert(content,showBtn) {
-        $('#alert-content').html(content);
-
-        if (showBtn) {
-            $('#alert-footer').show();
-        } else {
-            $('#alert-footer').hide();
-        }
-        $('#btn-alert-modal').click();
-    }
-    function CloseAlert() {
-        $('#close-alert').click();
-    }
-   
-
-    function OnError() {
-        alert('系統發生錯誤, 請稍後再試');
-    }
-
-   
-    function clearErrorMsg(target) {
-       
-        if (target.name == 'Content') {
-            var inputContent = $("textarea[name='Content']");
-            inputContent.next().hide();
-
-            return;
-        }
-
-
-        var input = $("input[name='" + target.name + "']");
-        
-        input.next().hide();
-     
-    }
-    function showErrors(msgs) {
-        if (!msgs.length) return;
-        var html = '<ul>';
-        for (var i = 0; i < msgs.length; i++) {
-            html += '<li>' + msgs[i] + '</li>';
-           
-        }
-
-        html += '</ul>';
-
-        var showBtn = false;
-        ShowAlert(html, showBtn)
-    }
-
-    function getConfirmType() {
-        return $('#confirm-action').val();
-    }
-    function setConfirmType(value) {
-        $('#confirm-action').val(value);
-    }
-
-    function getAttachmentId() {
-        return  $("input[name='Attachment_ID']").val();
+   function test() {
        
     }
-    function setAttachmentId(value) {
-        $("input[name='Attachment_ID']").val(value);
-    }
-
-    function onConfirmOK() {
-        CloseAlert();
-
-        var type = getConfirmType();
-        if (type == 'del-attachment') {
-            delAttachment();
-        }
-    }
-
-    function delAttachment() {
-        alert('delAttachment');
-
-        setAttachmentId('0');
-        $("input[name='Attachment_Title']").val('');
-
-        toggleFile();
-    }
-
-    function toggleFile(){
-        var attachmentId=getAttachmentId();
-        if(isTrue(attachmentId)){
-            $('#attachment-file').hide();
-            $('#div-exist-attachment').show();
-        }else{
-            $('#attachment-file').show();
-            $('#div-exist-attachment').hide();
-        }
-    }
-
-    function chkRoles() {
-        $('.chk-roles').each(function () {
-            $selected = isTrue($(this).val());
-            $(this).prop("checked", $selected);
-
-        });
-    }
-    function chkLevels() {
-        var levels = getLevels();
-        if (levels) {
-            var lavel_ids = levels.split(',');
-            $('.chk-levels').each(function () {
-                $selected = lavel_ids.includes($(this).val());               
-                $(this).prop("checked", $selected);
-
-            });
-
-            setLevelsText();
-        }
-        
-    }
-
-   
-    function iniEdit() {
-        toggleFile();
-
-        chkRoles();
-        chkLevels();
-
-        
-
-        var student = isTrue($("input[type='checkbox'][name='Student']").val());
-        var teacher = isTrue($("input[type='checkbox'][name='Teacher']").val());
-        var staff = isTrue($("input[type='checkbox'][name='Staff']").val());
-
-        if (teacher || staff) {
-            $('#unit-list').show();
-        }
-
-        if (student) {
-            $('#class-list').show();
-        }
-
-    }
-
-   
-
-   
 
     
     $(document).ready(function () {
-
+		
+		
         iniEdit();
 
         $("input[type='checkbox'][name='Staff']").change(function () {
+			
             var checked = $(this).prop("checked");
             $(this).val(checked);
             onStaffCheckChanged(checked);
         });
        
         $("input[type='checkbox'][name='Teacher']").change(function () {
+			
             var checked = $(this).prop("checked");
             $(this).val(checked);
-            var hideLevels=true;
-            onStaffCheckChanged(checked, hideLevels);
+            onTeacherCheckChanged(checked);
         });
         $("input[type='checkbox'][name='Student']").change(function () {
+			
             var checked = $(this).prop("checked");
             $(this).val(checked);
             onStudentCheckChanged(checked);
         });
-
-        //$('.chk-levels').change(function () {
-        //    var checked = $(this).prop("checked");
-        //    var val = $(this).val();
-        //    onLevelChanged(val ,checked);
-        //});
-
-        
-        
 
 
         $('#btn-select-done').click(function () {
@@ -837,13 +348,7 @@
             beginSelectClasses();
         });
 
-        //$("#attachment-file").change(function () {
-        //    if (document.getElementById('attachment-file').files.length) {
-
-        //    } else {
-
-        //    }
-        //});
+        
 
         $('#btn-del-attachment').click(function (e) {
             e.preventDefault();
@@ -864,11 +369,21 @@
             e.preventDefault();
             CloseAlert();
         });
+		
+		$('#btn-delete').click(function (e) {
+            e.preventDefault();
+            var content = '<h3>確定要刪除嗎?</h3>';
+            var showBtn = true;
+            ShowAlert(content, showBtn);
+
+            setConfirmType('delete-notice');
+        });
 
 
         $('#form-notice').keydown(function () {
             clearErrorMsg(event.target);
         });
+		
 
 
 
