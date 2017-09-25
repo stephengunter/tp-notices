@@ -1,71 +1,79 @@
 <?php
-
-   $user_id = '501';  //取得當前使用者Id
-   $user_unit = '102000';  //取得當前使用者部門
-	   
-	   
+  
    require_once("service.php");
    
-   $service=new NoticeService();
+   function redirectToIndex()
+   {
+	    /* 回到列表index */
+		header("Location: http://localhost/tp-notice/index.php");
+		exit;
+   }
    
    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-	   // 使用者權限驗證
 	   
-	   
-	   
-	   $id=0;
-	   if (isset($_POST['Id'])) {
-			$id=(int)$_POST['Id'];
-	   }
-	   
-	   
-	   
-	   if($id){
-		   $notice=$service->getById($id);
-		   if(!$notice)  die('錯誤: 查無資料');
-		   
-		    // 使用者權限驗證
-		   $can_update= $service->canEdit($notice, $user_id);
-		   if(!$can_update)  die('錯誤: 權限不足');
-		   
-		   
-		   $service->update($id , $user_id , $user_unit);
-	   }else{
-		   $service->insert($user_id , $user_unit);
-	   }
-	   
-	   
-	   
-	   $errMsg = '';
-	   if($errMsg){
-		   die('錯誤: ' . $errMsg);
-		   
-	   }else{
-		   /* 回到列表index */
-			header("Location: http://localhost/tp-notice/index.php");
-			exit;
-	   }
-	  
-	   
+	   try {
+			$service=new NoticeService();
+			
+			$id=0;
+		    if (isset($_POST['Id'])) {
+				$id=(int)$_POST['Id'];
+		    }
+			
+			if($id){
+				$service->update($id);
+				
+				redirectToIndex();
+			  
+		   }else{
+			   $service->insert();
+			   
+			   redirectToIndex();
+			 
+		   }
+			
+			
+			
+		} catch (Exception $e) {
+			
+			die('錯誤: ' . $e->getMessage());
+		}
        
    }
    else
    {
-		$id=0;
-		if (isset($_GET['id'])) {
-			$id=(int)$_GET['id'];
+	    
+	    try {
+			$service=new NoticeService();
+			
+			$id=0;
+			if (isset($_GET['id'])) {
+			   $id=(int)$_GET['id'];
+		    }
+			
+			$data;
+			if($id){
+				$data=$service->edit($id);	
+                	
+			}else{
+				$data=$service->create();
+							
+			}
+			
+			$notice=$data[0];
+			$attachment=$data[1];
+			
+			$canEdit=$service->canEdit($notice);
+			$canReview=$service->canReview($notice);
+			$canDelete=$service->canDelete($notice);
+			
+			
+		} catch (Exception $e) {
+			
+			die('錯誤: ' . $e->getMessage());
 		}
 		
-		$data=$service->edit($id);
-
-		$notice=$data[0];
-		$attachment=$data[1];
 		
-		$canEdit=$service->canEdit($notice, $user_id);
-		$canReview=$service->canReview($notice, $user_id);
-		$canDelete=$service->canDelete($notice, $user_id);
 		
-		var_dump($canReview);
 		
 		
    }

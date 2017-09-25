@@ -7,11 +7,23 @@
 		   $connectionInfo = array( "Database"=>"school", "UID"=>"stephen", "PWD"=>"ss355");
 		   $this->conn = sqlsrv_connect( $serverName, $connectionInfo);
 		   
-		   //驗證,取得當前使用者資料
+		   //身分驗證,取得當前使用者資料
+		   $user_id=51;   //當前使用者id
+		   $user_unit='105010';  //當前使用者部門
+		   $user_role=''; //身分,例如主管
+		   
+		   if(!$user_id){
+			   //身分驗證不通過, 丟出例外
+			   $msg='權限不足';
+			   throw new Exception($msg);
+			   
+		   }
+		   
+		   
 		   $this->current_user= [
-		       'id' => 51,   //當前使用者id
-			   'unit' => '105010',
-			   'role' => ''    //身分,例如主管
+		       'id' => $user_id,   
+			   'unit' => $user_unit,
+			   'role' => $user_role
 		   ];
 		   
 		   
@@ -28,7 +40,7 @@
 	   
 	   public function canEdit($notice)
 	   {
-		   $user_id = $this>getCurrentUserId();
+		   $user_id = $this->getCurrentUserId();
 		   if(!$notice['Id']) return true;
 		   
 		   //審核過資料無法修改
@@ -42,7 +54,7 @@
 	   
 	   public function canReview($notice)
 	   {
-		   $user_id = $this>getCurrentUserId();
+		   $user_id = $this->getCurrentUserId();
 		   if(!$notice['Id']) return false;
 		   
 		   /// 如果是發送部門主管, 可以
@@ -53,7 +65,8 @@
 	   
 	   public function canDelete($notice)
 	   {
-		   $user_id = $this>getCurrentUserId();
+		   if(!$notice['Id']) return false;
+		   $user_id = $this->getCurrentUserId();
 		   $canEdit=$this->canEdit($notice, $user_id);
 		   if(!$canEdit) return false;
 		   
@@ -80,49 +93,30 @@
 		    return $notice;
 		  
 	  }
+	  
+	  public function create()
+	  {
+		    $notice = $this->initNotice();
+			$attachment=$this->initAttachment();
+			
+			return array($notice, $attachment);
+		  
+	  }
 	   
 	   public function edit($id)
 	   {
-		   $conn = $this->conn;
-		   
-		   $notice = [
-				'Id' => 0 , 
-				'Content' => '',
-				'Staff' => 0,
-				'Teacher' => 0,
-				'Student' => 0,
-				'Reviewed' => 0,
-				'Units' => '',
-				'Classes' => '',
-				'Levels' => '',
-				
-				'PS' => '',
-
-	        ];
+		    $conn = $this->conn;
+		    $tsql = "SELECT * FROM Notices WHERE id=?" ;
+					
+			$params = array($id);
+			$stmt = sqlsrv_query( $conn, $tsql , $params);
 			
-		   	
-			if($id)  {
-				
-				
-				$tsql = "SELECT * FROM Notices WHERE id=?" ;
-				
-				$params = array($id);
-				$stmt = sqlsrv_query( $conn, $tsql , $params);
-				
-				$record = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-				
-				if($record) $notice=$record;
-				
-				
-	
-			}
+			$notice = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+			
+			
+			if(!$notice)  throw new Exception('查無資料');
 			
 			$attachment=$this->findAttachment($id);
-			
-			
-			
-		   
-			
 			
 			return array($notice, $attachment);
 			
@@ -132,15 +126,7 @@
 	   
 	   private function findAttachment($notice_Id)
 	   {
-		   $attachment=[
-				'Id' => 0 , 		
-				'Notice_Id' => 0,
-				'Title' => '',
-				'Name' => '',
-				'Type' => '',
-				'FileData' => '',
-
-	        ];
+		   $attachment=$this->initAttachment();
 			
 			if($notice_Id)  {
 				
@@ -163,8 +149,8 @@
 	   }
 	   public function insert() 
 	   {
-	       $user_id = $this>getCurrentUserId();
-		   $user_unit = $this>getCurrentUserUnit();
+	       $user_id = $this->getCurrentUserId();
+		   $user_unit = $this->getCurrentUserUnit();
 		   
 		   $conn = $this->conn;
 		   
@@ -216,9 +202,14 @@
 	  
 	  public function update($id) 
 	  {
-		   $user_id = $this>getCurrentUserId();
-		   $user_unit = $this>getCurrentUserUnit();
+		   $notice=$this->getById($id);
+		   if(!$notice) throw new Exception('查無資料');
+		  
+		   $user_id = $this->getCurrentUserId();
+		   $user_unit = $this->getCurrentUserUnit();
 		   
+		   if(!$this->canEdit($notice))  throw new Exception('資料無法修改');
+	  		   
 		   $conn = $this->conn;
 		   
 		   $createdBy=$user_unit;  //使用者部門
@@ -230,7 +221,7 @@
 		   $values=$this->getPostedValues();
 		   
 		   $query = "UPDATE Notices SET Content=(?), Staff=(?), Teacher=(?) , Student=(?) , Units=(?) , Classes=(?) , Levels=(?) , ";
-		   $query .= "PS=(?) , Reviewed=(?) , CreatedBy=(?) , CreatedAt=(?) , UpdatedBy=(?) , UpdatedAt=(?) "; 
+		   $query .= "PS=(?) , CreatedBy=(?) , CreatedAt=(?) , UpdatedBy=(?) , UpdatedAt=(?) "; 
 		   $query .= "WHERE Id=(?)";
 		 
 		   
@@ -243,7 +234,7 @@
 		   $arrParams[]=$values['Classes']; 
 		   $arrParams[]=$values['Levels']; 
 		   $arrParams[]=$values['PS']; 
-		   $arrParams[]=$values['Reviewed']; 
+		   
 		   
 		   $arrParams[]=$createdBy; 
 		   $arrParams[]=$now; 
@@ -400,6 +391,41 @@
 		  
 		   
 		   sqlsrv_query($conn, $query, $params); 
+		  
+	  }
+	   
+			
+	  
+	  public function initNotice()
+	  {
+		  
+		  return  [
+				'Id' => 0 , 
+				'Content' => '',
+				'Staff' => 0,
+				'Teacher' => 0,
+				'Student' => 0,
+				'Reviewed' => 0,
+				'Units' => '',
+				'Classes' => '',
+				'Levels' => '',
+				
+				'PS' => '',
+
+	        ];
+			
+	  }
+	  public function initAttachment()
+	  {
+		  return [
+				'Id' => 0 , 		
+				'Notice_Id' => 0,
+				'Title' => '',
+				'Name' => '',
+				'Type' => '',
+				'FileData' => '',
+
+	        ];
 		  
 	  }
 	   
