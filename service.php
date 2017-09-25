@@ -6,10 +6,29 @@
 		   $serverName = "127.0.0.1\SQLEXPRESS2014"; 
 		   $connectionInfo = array( "Database"=>"school", "UID"=>"stephen", "PWD"=>"ss355");
 		   $this->conn = sqlsrv_connect( $serverName, $connectionInfo);
+		   
+		   //驗證,取得當前使用者資料
+		   $this->current_user= [
+		       'id' => 51,   //當前使用者id
+			   'unit' => '105010',
+			   'role' => ''    //身分,例如主管
+		   ];
+		   
+		   
+	   }
+	   public function getCurrentUserId()
+	   {
+			return $this->current_user['id'];
 	   }
 	   
-	   public function canEdit($notice, $user_id)
+	   public function getCurrentUserUnit()
 	   {
+		   return $this->current_user['unit'];
+	   }
+	   
+	   public function canEdit($notice)
+	   {
+		   $user_id = $this>getCurrentUserId();
 		   if(!$notice['Id']) return true;
 		   
 		   //審核過資料無法修改
@@ -21,8 +40,9 @@
 		   
 	   }
 	   
-	   public function canReview($notice, $user_id)
+	   public function canReview($notice)
 	   {
+		   $user_id = $this>getCurrentUserId();
 		   if(!$notice['Id']) return false;
 		   
 		   /// 如果是發送部門主管, 可以
@@ -31,12 +51,13 @@
 		   return false;
 	   }
 	   
-	   public function canDelete($notice,$user_id)
+	   public function canDelete($notice)
 	   {
+		   $user_id = $this>getCurrentUserId();
 		   $canEdit=$this->canEdit($notice, $user_id);
 		   if(!$canEdit) return false;
 		   
-		   ///
+		   
 		   
 		   return true;
 		   
@@ -140,9 +161,11 @@
 			
 			
 	   }
-	   public function insert($user_id , $user_unit) 
+	   public function insert() 
 	   {
-	     
+	       $user_id = $this>getCurrentUserId();
+		   $user_unit = $this>getCurrentUserUnit();
+		   
 		   $conn = $this->conn;
 		   
 		   $createdBy=$user_unit;  //使用者部門
@@ -191,8 +214,11 @@
 		  
 	  }
 	  
-	  public function update($id ,$user_id , $user_unit) 
+	  public function update($id) 
 	  {
+		   $user_id = $this>getCurrentUserId();
+		   $user_unit = $this>getCurrentUserUnit();
+		   
 		   $conn = $this->conn;
 		   
 		   $createdBy=$user_unit;  //使用者部門
@@ -250,9 +276,11 @@
 		  
 	  }
 	  
-	  private function saveAttachment($notice_id,$user_id , $user_unit)
+	  private function saveAttachment($notice_id)
 	  {
-			
+			$user_id = $this>getCurrentUserId();
+		    $user_unit = $this>getCurrentUserUnit();
+		   
 			$file_name = $_FILES['Attachment']['name'];
 			$file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
 			$file_title = $file_name;
