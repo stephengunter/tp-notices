@@ -27,6 +27,30 @@
 		});
 	   
    }
+   function delAttachment() {
+        var url = getAppUrl('delete.php');
+		var id=getAttachmentId();
+		
+		$.ajax({
+			type: "POST",
+			url: url,
+			data:{Attachment_Id:id},
+			dataType: 'json',
+			success: function (data) {
+	            setAttachmentId('0');
+				$("input[name='Attachment_Title']").val('');
+
+				toggleFile();
+				
+			},
+			error: function (e) {
+				console.log(e);
+				OnError();
+			}
+		});
+
+       
+   }
    
    function reviewOK(){
 	   $('#form-approve').submit();
@@ -36,6 +60,7 @@
 	   
 	   return $('#notice-id').val();
    }
+   
    
    function canEdit(){
 	   var val=$('#can-edit').val();
@@ -517,11 +542,11 @@
     }
 
     function getAttachmentId() {
-        return  $("input[name='Attachment_ID']").val();
+        return  $("input[name='Attachment_Id']").val();
        
     }
     function setAttachmentId(value) {
-        $("input[name='Attachment_ID']").val(value);
+        $("input[name='Attachment_Id']").val(value);
     }
 
     function onConfirmOK() {
@@ -541,14 +566,7 @@
 	
 	
 
-    function delAttachment() {
-        alert('delAttachment');
-
-        setAttachmentId('0');
-        $("input[name='Attachment_Title']").val('');
-
-        toggleFile();
-    }
+   
 
     function toggleFile(){
 		
@@ -587,7 +605,7 @@
 
    
     function iniEdit() {
-		
+	
 		if(!canEdit()){
 			$("#form-notice :input").attr("disabled", true);
 			$('#submit-buttons').hide();

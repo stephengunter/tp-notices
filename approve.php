@@ -1,16 +1,30 @@
 <?php
 
-   
+    require_once("helper.php");
+    require_once("service.php");
+	
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-		require_once("service.php");
+		$id=0;
+	    if (isset($_POST['Id'])) {
+	 		$id=(int)$_POST['Id'];
+	    }
+	
         $service=new NoticeService();
 		
-		echo "test";
+		try {
+			
+			$service=new NoticeService();
+			
+			$service->approve($id);
+			
+			redirectToIndex();
+			
+	   } catch (Exception $e) {
+			die('錯誤: ' . $e->getMessage());
+	   }
 		
 		
 	}else{
-		/* 回到列表index */
-		header("Location: http://localhost/tp-notice/index.php");
-		exit;
+		die('錯誤: 頁面不存在(404)');
 		
 	}

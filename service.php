@@ -7,8 +7,14 @@
 		   $connectionInfo = array( "Database"=>"school", "UID"=>"stephen", "PWD"=>"ss355");
 		   $this->conn = sqlsrv_connect( $serverName, $connectionInfo);
 		   
+		   $sync_db_server_name = "127.0.0.1\SQLEXPRESS2014"; 
+		   $sync_db_connection_info = array( "Database"=>"tp_sync", "UID"=>"stephen", "PWD"=>"ss355");
+		   $this->sync_conn =sqlsrv_connect($sync_db_server_name,  $sync_db_connection_info);
+		   
+		   
+		   
 		   //身分驗證,取得當前使用者資料
-		   $user_id=51;   //當前使用者id
+		   $user_id='501';   //當前使用者id
 		   $user_unit='105010';  //當前使用者部門
 		   $user_role=''; //身分,例如主管
 		   
@@ -76,12 +82,30 @@
 		   
 	   }
 	   
+	   public function index($page=1)
+	   {
+		    $user_id = $this->getCurrentUserId();
+		    $user_unit = $this->getCurrentUserUnit();
+		   //依單位查找 或 依建檔人查找
+		   
+		    $conn = $this->conn;
+		    $sql = "SELECT * FROM Notices";
+			$stmt = sqlsrv_query( $conn, $sql );
+			
+            $arrRecords;
+			while( $row = sqlsrv_fetch_array( $stmt, SQLSRV_FETCH_ASSOC) ) {
+				 $arrRecords[]=$row;
+			}
+			
+			return $arrRecords;
+	   }
+	   
 	   public function getById($id)
 	   {
 		    $conn = $this->conn;
 		   
 			
-			$tsql = "SELECT * FROM Notices WHERE id=?" ;
+			$tsql = "SELECT * FROM Notices WHERE Id=?" ;
 			
 			$params = array($id);
 			$stmt = sqlsrv_query( $conn, $tsql , $params);
@@ -91,6 +115,21 @@
 			
 			
 		    return $notice;
+		  
+	  }
+	  public function getAttachmentById($id)
+	   {
+		    $conn = $this->conn;
+		   
+			
+			$tsql = "SELECT * FROM NoticeAttachment WHERE Id=?" ;
+			
+			$params = array($id);
+			$stmt = sqlsrv_query( $conn, $tsql , $params);
+			
+			$attachment = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+			
+		    return $attachment;
 		  
 	  }
 	  
@@ -124,29 +163,7 @@
 		   
 	   }
 	   
-	   private function findAttachment($notice_Id)
-	   {
-		   $attachment=$this->initAttachment();
-			
-			if($notice_Id)  {
-				
-				$conn = $this->conn;
-				$tsql = "SELECT TOP 1 * FROM NoticeAttachment WHERE Notice_Id=?" ;
-				
-				$params = array($notice_Id);
-				$stmt = sqlsrv_query( $conn, $tsql , $params);
-				
-				$record = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-				
-				if($record) $attachment=$record;
-	
-		       
-			}
-			
-			return $attachment;
-			
-			
-	   }
+	   
 	   public function insert() 
 	   {
 	       $user_id = $this->getCurrentUserId();
@@ -267,10 +284,158 @@
 		  
 	  }
 	  
+	  public function approve($id) 
+	  {
+		  $notice=$this->getById($id);
+		  if(!$notice) throw new Exception('查無資料');
+		  
+		  if(!$this->canReview($notice))  throw new Exception('權限不足');
+		  
+		   $user_id = $this->getCurrentUserId();
+		   $now=date('Y-m-d H:i:s');
+	  		   
+		   $conn = $this->conn;
+		   
+		   $reviewed=true;
+		   $reviewedBy=$user_id;  //審閱者, 就是當前使用者id
+		   $reviewedAt=$now;
+		   
+		   $query = "UPDATE Notices SET Reviewed=(?), ReviewedBy=(?), ReviewedAt=(?)";
+		   $query .= "WHERE Id=(?)";
+		   
+		   $arrParams[]=$reviewed;  
+		   $arrParams[]=$reviewedBy;  
+		   $arrParams[]=$reviewedAt; 
+		   $arrParams[]=$id; 
+		  
+		   
+		   sqlsrv_query($conn, $query, $arrParams); 
+		   
+		   //審核通過,同步資料
+		   syncNotice($id);
+	  }
+	  
+	  public function  syncNotice($notice_id)
+	  {
+		   $notice=$this->getById($id);
+		   if(!$notice) throw new Exception('查無資料');
+		  
+		   if(!$notice['Reviewed'])  throw new Exception('資料未審核,無法同步');
+		   
+		   $type_id=1;  // 純文字
+		   $members='';    //需要通知的成員代號  格式:ss355,10545001,10622501 
+		   //根據Notice資料, 取得需要通知的成員代號
+		   //  if($notice['Student']) => 需要通知學生
+		   //  if($notice['Teacher']) => 需要通知教師
+		   //  if($notice['Staff']) => 需要通知職員
+		   
+		   //if($notice['Levels']=='1,2')   => 通知一級主管與二級主管
+		   //if($notice['Levels']=='1')   => 通知一級主管
+		   //if($notice['Levels']=='2')   => 通知二級主管
+		   
+		   //$notice['Units'] => 需要通知的單位   格式:  102000,105010 
+		   //$notice['Classes'] => 需要通知的班級   格式:  GD41A,ID41A 
+		   
+		   //$notice['CreatedBy'] =>  建檔的單位代碼   例如:105010
+		   
+		   $members='ss355,10545001,10622501'; 
+		   
+		   $from='總務處' . '通知：';
+		   $content=$from . $notice['Content'];
+		   
+		   $attachment = $this->findAttachment($notice_id);
+		  
+		   $attachment_id=(int)$attachment['Id'];			
+		   if($attachment_id){
+			   $type_id=2;   //有附加檔案
+		   }
+		   
+		   $now=date('Y-m-d H:i:s');
+		  
+		   $sync_conn = $this->sync_conn;
+		   
+		   $query = "INSERT INTO sqlsrv_tp_sync ( text_content, type_id , members , created_at , updated_at ) "; 
+		   $query .= "VALUES (?,?,?,?,?); SELECT SCOPE_IDENTITY()"; 
+		   
+		   $arrParams[]=$content;  
+		   $arrParams[]=$type_id; 
+		   $arrParams[]=$members;
+		   $arrParams[]=$now; 
+		   $arrParams[]=$now; 
+		  
+		   
+		   $resource=sqlsrv_query($sync_conn, $query, $arrParams); 
+		   sqlsrv_next_result($resource); 
+		   sqlsrv_fetch($resource); 
+			
+		   $sync_notice_id= sqlsrv_get_field($resource, 0); 
+		   
+		   
+		   if($attachment_id){  //有附加檔案
+			      $this->syncAttachment($notice_id,$user_id , $user_unit);
+		   }
+		  
+	  }
+	  
+	  private function syncAttachment()
+	  {
+		  
+		  
+	  }
+	  
+	  public function delete($id)
+	  {
+		   $notice=$this->getById($id);
+		   if(!$notice) throw new Exception('查無資料');
+		   
+		   if(!$this->canDelete($notice))  throw new Exception('資料無法刪除');
+		   
+		   $conn = $this->conn;
+		   $query = "DELETE FROM Notices WHERE Id=?";
+		   
+		   $params[]=$id;
+		  
+		   
+		   sqlsrv_query($conn, $query, $params); 
+		  
+	  }
+	  public function deleteAttachment($id)
+	  {
+		   $attachment= $this->getAttachmentById($id);
+		   if(!$attachment)  throw new Exception('查無資料');
+		   
+		   $notice_id=$attachment['Notice_Id'];
+		   $notice=$this->getById($notice_id);
+		   if($notice) {
+			    if(!$this->canEdit($notice))  throw new Exception('資料無法修改');
+		   }
+		   
+		   $conn = $this->conn;
+		   $query = "DELETE FROM NoticeAttachment WHERE Id=?";		   
+		   $params[]=$id;
+		   sqlsrv_query($conn, $query, $params); 
+		   
+		   if($notice) {
+			   $user_id = $this->getCurrentUserId();
+			   $updatedBy=$user_id;  //使用者id
+			   $now=date('Y-m-d H:i:s');
+			   
+			   $query = "UPDATE Notices SET UpdatedBy=(?) , UpdatedAt=(?) ";		  
+			   $query .= "WHERE Id=(?)";
+			   $arrParams[]=$updatedBy; 
+			   $arrParams[]=$now; 		   
+			   $arrParams[]=$notice_id; 
+			  
+			   
+			   sqlsrv_query($conn, $query, $arrParams); 
+		   }
+		  
+	  }
+	  
 	  private function saveAttachment($notice_id)
 	  {
-			$user_id = $this>getCurrentUserId();
-		    $user_unit = $this>getCurrentUserUnit();
+			$user_id = $this->getCurrentUserId();
+		    $user_unit = $this->getCurrentUserUnit();
 		   
 			$file_name = $_FILES['Attachment']['name'];
 			$file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
@@ -308,26 +473,22 @@
 			
 
 		  
+		  
 	  }
 	  
 	  private function updateAttachmentTitle($file_title,$notice_id,$user_id )
 	  {
 		    
-		    $conn = $this->conn;
-			$tsql = "SELECT TOP 1 * FROM NoticeAttachment WHERE Notice_Id=?" ;			
-			$params = array($notice_id);
-			$stmt = sqlsrv_query( $conn, $tsql , $params);
-			
-			$record = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
-		
-		    $attachment_id=0;
-			if($record) $attachment_id=$record['Id'];
-			
+			$attachment = $this->findAttachment($notice_id);		
+		  
+			$attachment_id=(int)$attachment['Id'];			
 			if(!$attachment_id) return;
 			
 				
 				
 		    $now=date('Y-m-d H:i:s');
+			
+			$conn = $this->conn;
 			
 			$query = "UPDATE NoticeAttachment SET Title=(?), UpdatedBy=(?) , UpdatedAt=(?) "; 
 			$query .= "WHERE Id=(?)";
@@ -341,10 +502,32 @@
 			
 	  }
 	  
+	  private function findAttachment($notice_Id)
+	   {
+		   $attachment=$this->initAttachment();
+			
+			if($notice_Id)  {
+				
+				$conn = $this->conn;
+				$tsql = "SELECT TOP 1 * FROM NoticeAttachment WHERE Notice_Id=?" ;
+				
+				$params = array($notice_Id);
+				$stmt = sqlsrv_query( $conn, $tsql , $params);
+				
+				$record = sqlsrv_fetch_array($stmt, SQLSRV_FETCH_ASSOC);
+				
+				if($record) $attachment=$record;
+	
+		       
+			}
+			
+			return $attachment;
+			
+			
+	   }
+	  
 	  private function getPostedValues()
 	  {
-		    
-
 			$content = $_POST['Content'];
 
 			$staff=false;
@@ -382,17 +565,7 @@
 		  
 	  }
 	  
-	  public function delete($id)
-	  {
-		   $conn = $this->conn;
-		   $query = "DELETE FROM Notices WHERE Id=?";
-		   
-		   $params[]=$id;
-		  
-		   
-		   sqlsrv_query($conn, $query, $params); 
-		  
-	  }
+	  
 	   
 			
 	  

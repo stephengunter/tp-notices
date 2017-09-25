@@ -1,13 +1,9 @@
 <?php
-  
+
+   require_once("helper.php");
    require_once("service.php");
    
-   function redirectToIndex()
-   {
-	    /* 回到列表index */
-		header("Location: http://localhost/tp-notice/index.php");
-		exit;
-   }
+   
    
    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	   
@@ -206,7 +202,7 @@
 				Id:<input id="notice-id" type="text" name="Id" value="<?php echo $notice['Id']; ?>"  />
 				Reviewed:<input type="text" name="Reviewed" value="<?php echo $notice['Reviewed']; ?>" />
 				Levels:<input type="text" name="Levels" value="<?php echo $notice['Levels']; ?>" />
-				Attachment_ID:<input type="text" name="Attachment_ID" value="<?php echo $attachment['Id']; ?>"  />
+				Attachment_ID:<input type="text" name="Attachment_Id" value="<?php echo $attachment['Id']; ?>"  />
             </div>
 
         </div>
