@@ -34,6 +34,7 @@
 		   
 		   
 	   }
+	   
 	   public function getCurrentUserId()
 	   {
 			return $this->current_user['id'];
@@ -312,12 +313,12 @@
 		   sqlsrv_query($conn, $query, $arrParams); 
 		   
 		   //審核通過,同步資料
-		   syncNotice($id);
+		   $this->syncNotice($id);
 	  }
 	  
 	  public function  syncNotice($notice_id)
 	  {
-		   $notice=$this->getById($id);
+		   $notice=$this->getById($notice_id);
 		   if(!$notice) throw new Exception('查無資料');
 		  
 		   if(!$notice['Reviewed'])  throw new Exception('資料未審核,無法同步');
@@ -354,7 +355,7 @@
 		  
 		   $sync_conn = $this->sync_conn;
 		   
-		   $query = "INSERT INTO sqlsrv_tp_sync ( text_content, type_id , members , created_at , updated_at ) "; 
+		   $query = "INSERT INTO school_notice_sync ( text_content, type_id , members , created_at , updated_at ) "; 		  
 		   $query .= "VALUES (?,?,?,?,?); SELECT SCOPE_IDENTITY()"; 
 		   
 		   $arrParams[]=$content;  
@@ -365,21 +366,47 @@
 		  
 		   
 		   $resource=sqlsrv_query($sync_conn, $query, $arrParams); 
+		   if( $resource === false ) {
+				throw new Exception('同步失敗');
+		   }
+		  
 		   sqlsrv_next_result($resource); 
 		   sqlsrv_fetch($resource); 
 			
 		   $sync_notice_id= sqlsrv_get_field($resource, 0); 
+		  
+		   
+		   
 		   
 		   
 		   if($attachment_id){  //有附加檔案
-			      $this->syncAttachment($notice_id,$user_id , $user_unit);
+			      $this->syncAttachment($attachment_id,$sync_notice_id);
 		   }
 		  
 	  }
 	  
-	  private function syncAttachment()
+	  private function syncAttachment($attachment_id,$sync_notice_id )
 	  {
-		  
+		   $attachment=$this->getAttachmentById($attachment_id);
+		   if(!$attachment)  throw new Exception('找不到附件檔案');
+		   
+		   $file_type=$attachment['Type'];
+		   $file_data=$attachment['FileData'];
+		   $display_name=$attachment['Title'];
+		   
+		   $sync_conn = $this->sync_conn;
+			
+		   $query = "INSERT INTO school_notice_attachment ( notice_id, file_type , file_data , display_name ) "; 		  
+		   $query .= "VALUES (?,?,?,?)"; 
+		   
+		   $arrParams[]=$sync_notice_id;  
+		   $arrParams[]=$file_type; 
+		   $arrParams[]=$file_data;
+		   $arrParams[]=$display_name; 
+			
+		   sqlsrv_query( $sync_conn, $query, $arrParams);
+			
+			
 		  
 	  }
 	  
