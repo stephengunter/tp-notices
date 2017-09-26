@@ -158,7 +158,7 @@
                         <span class="glyphicon glyphicon-pencil"></span> 編輯
                     </button>
                     <textarea id="unit-names" class="form-control" rows="5" cols="50" disabled></textarea>
-                    <input type="text" id="unit-codes" name="Units" value="<?php echo $notice['Units']; ?>" />
+                    <input type="hidden" id="unit-codes" name="Units" value="<?php echo $notice['Units']; ?>" />
                     <small id="err-units" class="text-danger" style="display: none;">請選擇通知對象部門</small>
                 </div>
                 <div id="class-list" class="pad-top" style="display:none">
@@ -167,7 +167,7 @@
                         <span class="glyphicon glyphicon-pencil"></span> 編輯
                     </button>
                     <textarea id="class-names" class="form-control" rows="5" cols="50" disabled></textarea>
-                    <input type="text" id="class-codes" name="Classes" value="<?php echo $notice['Classes']; ?>"  />
+                    <input type="hidden" id="class-codes" name="Classes" value="<?php echo $notice['Classes']; ?>"  />
                     <small id="err-classes" class="text-danger" style="display: none;">請選擇通知對象班級</small>
                 </div>
             </div>
@@ -197,7 +197,7 @@
             </div>
         </div>
 		
-	    <div class="row" >
+	    <div class="row" style="display:none" >
             <div class="col-md-12">
 				Id:<input id="notice-id" type="text" name="Id" value="<?php echo $notice['Id']; ?>"  />
 				Reviewed:<input type="text" name="Reviewed" value="<?php echo $notice['Reviewed']; ?>" />
@@ -239,7 +239,7 @@
 	
 	
 	
-    <div class="row">
+    <div class="row" style="display:none" >
         <div class="col-md-12">
 		    can-edit:<input id="can-edit" type="text" value="<?php echo $canEdit; ?>" />
 			can-review:<input id="can-review" type="text" value="<?php echo $canReview; ?>"  />
@@ -302,7 +302,7 @@
     </div>
 
 
-    <button id="btn-alert-modal" type="button" data-toggle="modal" data-target="#alert-modal">ALERT</button>
+    <button id="btn-alert-modal" type="button" data-toggle="modal" data-target="#alert-modal" style="display:none" >ALERT</button>
     <div class="modal fade" id="alert-modal" role="dialog">
         <div class="modal-dialog"  role="document">
             <div class="modal-content">

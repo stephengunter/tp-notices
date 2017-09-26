@@ -9,7 +9,10 @@
    
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous" >
    
-  
+    <style>
+		ul,li{margin:0;padding;0}
+		li{line-height:2em;}
+	</style>
     
 </head>
 <body id="body">
@@ -18,11 +21,62 @@
    
     <div class="container">
       <h1>校務系統通知說明</h1>
+	     
+		 <div class="row">
+		 <h3>流程示意</h3>   
+		    <table class="table">
+				 <tr>
+				    <th scope="row">1</th>
+					<td>使用者建立通知內容</td>
+					<td>填寫內容,附加檔案,選擇發送對象(職員/教師/學生)</td>
+				 </tr>
+				  <tr>
+					<th scope="row">2</th>
+					<td>單位主管審核</td>
+					<td></td>
+				 </tr>
+				 <tr>
+					<th scope="row">3</th>
+					<td>審核通過 </td>
+					<td>依據發送對象找出接受通知的成員清單,將資料同步至Teamplus應用程式</td>
+				 </tr>
+				 
+			 <table/>
+		    
+		 </div>
+		
+		 
+		 
+		 <div class="row">
+		 <h3>檔案簡介</h3>
+		     <table class="table">
+				 <tr>
+					<td>index.php</td>
+					<td>通知紀錄列表. 使用者介面</td>
+				 </tr>
+				  <tr>
+					<td>edit.php</td>
+					<td>編輯通知內容. 使用者介面</td>
+				 </tr>
+				 <tr>
+					<td>delete.php</td>
+					<td>負責刪除通知或刪除附件檔案. POST</td>
+				 </tr>
+				 <tr>
+					<td>approve.php</td>
+					<td>負責核准通知. POST</td>
+				 </tr>
+				 <tr>
+					<td>service.php</td>
+					<td>主要的處理程序在此, 包括資料庫操作</td>
+				 </tr>
+			 <table/>
+		 </div>
         <div class="row">
 		
 	   
 
-		<h3>1. 建立資料庫:
+		<h3>建立資料庫:
 
 		在sql資料夾create_tables.txt, 執行此sql將建立兩個資料表, 結構如下：
 		</h3>
@@ -149,18 +203,33 @@
 
        <div class="row">
 
-		<h3>2. 修改存取資料庫的程式碼: 在 sevice.php
-		</h3>
+		<h3>完成sevice.php的驗證規則與其他 </h3>
+		
 		
 		 <ul>
-		   
-			<li>
-			     sevice.php裡面的程式碼經過測試可用. 所以只修改ip ,db_name ,username , password 大致可用.
+		    <li>
+			     所有幕後工作皆在service.php所定義的 NoticeService 類別中
 			</li>
-			
 			<li>
-			
-			   建議您依據經驗修改service.php裡面存取資料庫的程式, 因為我對這種寫法是第一次使用很陌生, 例如我不曉得是否需要關閉連結等等細節, 可能會有疏漏.
+			     修改資料庫連線與編碼
+			</li>
+			<li>
+			     驗證規寫在 NoticeService 類別的建構子，需要user_id (當前使用者id) , user_unit (當前使用者部門代碼) 等資料
+			</li>
+			<li>
+			    canEdit方法：回傳boolean. 檢查該筆資料是否可被當前使用者編輯.例如:審核過的資料無法再修改, 只有建檔者本人可修改..  等.
+			   
+			</li>
+			<li>
+			    canReview方法：回傳boolean. 檢查該筆資料是否可被當前使用者審核.例如:只有建檔者部門主管可審核...等.
+			   
+			</li>
+			<li>
+			    canDelete方法：回傳boolean. 檢查該筆資料是否可被當前使用者刪除.例如:已審核通過的資料無法刪除...等.
+			   
+			</li>
+			<li>
+			    syncNotice方法： 核准後負責同步的程式. 需要依據使用者選擇的發送對象、單位(班級)，找出接收此通知訊息的名單,產生一個以逗號分隔的字串. 例如:ss355,10545001,10622501
 			</li>
 		 </ul>
 		

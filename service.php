@@ -90,7 +90,7 @@
 		   //依單位查找 或 依建檔人查找
 		   
 		    $conn = $this->conn;
-		    $sql = "SELECT * FROM Notices";
+		    $sql = "SELECT * FROM Notices";   //WHERE CreatedBy=?
 			$stmt = sqlsrv_query( $conn, $sql );
 			
             $arrRecords;
@@ -337,12 +337,13 @@
 		   //$notice['Units'] => 需要通知的單位   格式:  102000,105010 
 		   //$notice['Classes'] => 需要通知的班級   格式:  GD41A,ID41A 
 		   
-		   //$notice['CreatedBy'] =>  建檔的單位代碼   例如:105010
+		  
 		   
 		   $members='ss355,10545001,10622501'; 
+		   $created_by=$notice['CreatedBy'];  //建檔的單位代碼   例如:105010
 		   
-		   $from='總務處' . '通知：';
-		   $content=$from . $notice['Content'];
+		  
+		   $content=$notice['Content'];
 		   
 		   $attachment = $this->findAttachment($notice_id);
 		  
@@ -355,12 +356,13 @@
 		  
 		   $sync_conn = $this->sync_conn;
 		   
-		   $query = "INSERT INTO school_notice_sync ( text_content, type_id , members , created_at , updated_at ) "; 		  
-		   $query .= "VALUES (?,?,?,?,?); SELECT SCOPE_IDENTITY()"; 
+		   $query = "INSERT INTO school_notice_sync ( text_content, type_id , members , created_by, created_at , updated_at ) "; 		  
+		   $query .= "VALUES (?,?,?,?,?,?); SELECT SCOPE_IDENTITY()"; 
 		   
 		   $arrParams[]=$content;  
 		   $arrParams[]=$type_id; 
 		   $arrParams[]=$members;
+		   $arrParams[]=$created_by;
 		   $arrParams[]=$now; 
 		   $arrParams[]=$now; 
 		  
